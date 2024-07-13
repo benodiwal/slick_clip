@@ -1,0 +1,7 @@
+node_modules
+__test__
+.gitignore
+.eslintrc.json
+.eslintrc.js
+jest.config.ts
+prettier.config.js
