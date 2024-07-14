@@ -3,11 +3,11 @@ import { Request, Response, NextFunction } from 'express';
 import AbstractController from './index.controller';
 import z from 'zod';
 import { storageMiddleware } from 'middlewares/storage.middleware';
-import { validateRequestBody } from 'validators/validateRequest';
+import { validateRequestBody, validateRequestParams } from 'validators/validateRequest';
 import { BadRequestError } from 'errors/bad-request-error';
 import { NotFoundError } from 'errors/not-found-error';
 import getEnvVar from 'env/index';
-import { getFileLocation } from 'utils';
+import { generateUniqueUrl, getFileLocation } from 'utils';
 import Clipper from 'libs/clipper.lib';
 import { stat } from 'fs/promises';
 
@@ -68,7 +68,7 @@ class VideoController extends AbstractController {
             }
 
             await Clipper.validate(file.path);
-            
+
             await this.ctx.db.client.video.create({
                 data: {
                     userId: req.user.id,
@@ -224,6 +224,91 @@ class VideoController extends AbstractController {
       },
     ];
   }
+
+  createLink() {
+    const paramsSchema = z.object({ id: z.string() });
+    type IParams = z.infer<typeof paramsSchema>;
+
+    const payloadSchema = z.object({ expiresIn: z.number() });
+    type IPayload = z.infer<typeof payloadSchema>;
+
+    return [
+        validateRequestParams(paramsSchema),
+        validateRequestBody(payloadSchema),
+        async (req: Request<unknown, unknown, IPayload>, res: Response, next: NextFunction) => {
+            try {
+                const { id } = req.params as unknown as IParams;
+                const { expiresIn } = req.body;
+
+                const video = await this.ctx.db.client.video.findFirst({
+                    where: {
+                        id,
+                        userId: req.user.id,
+                    }
+                });
+
+                if (!video) {
+                    return res.status(404).json({ error: 'Video not found or access denied' });
+                }
+
+                const url = generateUniqueUrl();
+                const expiresAt = new Date(Date.now() + expiresIn*1000);
+
+                const sharedLink = await this.ctx.db.client.shareLink.create({
+                    data: {
+                        url,
+                        expiresAt,
+                        videoId: video.id,
+                    }
+                });
+
+                res.status(201).json({
+                    id: sharedLink.id,
+                    url: `${req.protocol}://${req.get('host')}/videos/share/${sharedLink.url}`,
+                    expiresAt: sharedLink.expiresAt,
+                });
+
+                res.sendStatus(200);
+            } catch (e) {
+                console.error(e);
+                next(new InternalServerError());
+            }
+        }
+    ];
+   }
+
+   getLink() {
+    const paramsSchema = z.object({ linkId: z.string() });
+    type IParams = z.infer<typeof paramsSchema>;
+
+    return [
+        validateRequestParams(paramsSchema),
+        async (req: Request, res: Response, next: NextFunction) => {
+            try {
+                const { linkId } = req.body as unknown as IParams;
+
+                const shareLink = await this.ctx.db.client.shareLink.findUnique({
+                    where: { url: linkId },
+                    include: { video: true },
+                });
+                
+                if (!shareLink) {
+                    return res.status(404).json({ error: 'Share link not found' });
+                }
+                
+                if (new Date() > shareLink.expiresAt) {
+                    return res.status(410).json({ error: 'Share link has expired' });
+                }
+
+                res.download(`${getEnvVar('STORAGE_PATH')}/${shareLink.video.filePath}`);
+            } catch (e) {
+                console.error(e);
+                next(new InternalServerError());
+            }
+        }
+    ];
+   }
+
 }
 
 export default VideoController;
