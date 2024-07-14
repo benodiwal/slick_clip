@@ -3,6 +3,7 @@ import AbstractController from "./index.controller";
 import { InternalServerError } from "errors/internal-server-error";
 import z from 'zod';
 import { validateRequestBody, validateRequestParams } from "validators/validateRequest";
+import { generateApiToken } from "utils";
 
 class UserController extends AbstractController {
     create() {
@@ -28,7 +29,7 @@ class UserController extends AbstractController {
                         return res.status(400).json({ error: 'Username already exists' });
                     }
 
-                    const apiToken = "";
+                    const apiToken = generateApiToken();
 
                     const user = await this.ctx.db.client.user.create({
                         data: {
