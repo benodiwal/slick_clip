@@ -26,7 +26,6 @@
       "errors/*": ["errors/*"],
       "interfaces/*": ["interfaces/*"],
       "types/*": ["types/*"],
-      "services/*": ["services/*"],
       "database/*": ["database/*"],
       "validators/*": ["validators/*"]
     }
