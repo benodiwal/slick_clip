@@ -35,7 +35,7 @@ class Server {
     const healthRouter = new HealthRouter(ctx, this.#engine, '');
     const userRouter = new UserRouter(ctx, this.#engine, '/user');
     const videoRouter = new VideoRouter(ctx, this.#engine, '/video');
-    
+
     healthRouter.register();
     userRouter.register();
     videoRouter.register();

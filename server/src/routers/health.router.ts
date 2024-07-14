@@ -2,7 +2,6 @@ import HealthController from 'controllers/health.controller';
 import AbstractRouter from './index.router';
 
 class HealthRouter extends AbstractRouter {
-
   registerMiddlewares() {
     return [];
   }

@@ -1,5 +1,5 @@
 import crypto from 'crypto';
 
 export const generateApiToken = () => {
-    return crypto.randomBytes(32).toString('hex');
-}
+  return crypto.randomBytes(32).toString('hex');
+};
