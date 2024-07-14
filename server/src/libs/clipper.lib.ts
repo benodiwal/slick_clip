@@ -52,6 +52,26 @@ class Clipper {
       });
     });
   };
+
+  static validate = (inputPath: string): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(inputPath, (err, metadata) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        if (!metadata || !metadata.format || typeof metadata.format.duration !== 'number') {
+          reject(new Error('Unable to determine video duration'));
+          return;
+        }
+
+        const durationInSeconds = metadata.format.duration;
+        resolve(durationInSeconds);
+      });
+    });
+  };
+  
 }
 
 export default Clipper;
