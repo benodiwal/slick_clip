@@ -1,3 +1,4 @@
+import VideoConfig from 'configs/video.config';
 import { Router, Express, Handler, Response, Request, RequestHandler } from 'express';
 import { IContext } from 'interfaces/database';
 
@@ -6,12 +7,14 @@ export default abstract class AbstractRouter {
   #engine: Express;
   #path: string;
   ctx: IContext;
+  config: VideoConfig;
 
-  constructor(ctx: IContext, engine: Express, path: string) {
+  constructor(ctx: IContext, engine: Express, path: string, config: VideoConfig) {
     this.#router = Router();
     this.#engine = engine;
     this.#path = path;
     this.ctx = ctx;
+    this.config = config;
   }
 
   register() {

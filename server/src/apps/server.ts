@@ -32,9 +32,9 @@ class Server {
   #registerHandlers() {
     const ctx = new Context(this.db);
 
-    const healthRouter = new HealthRouter(ctx, this.#engine, '');
-    const userRouter = new UserRouter(ctx, this.#engine, '/user');
-    const videoRouter = new VideoRouter(ctx, this.#engine, '/video');
+    const healthRouter = new HealthRouter(ctx, this.#engine, '', this.config);
+    const userRouter = new UserRouter(ctx, this.#engine, '/user', this.config);
+    const videoRouter = new VideoRouter(ctx, this.#engine, '/videos', this.config);
 
     healthRouter.register();
     userRouter.register();

@@ -2,11 +2,11 @@ import js_yaml from 'js-yaml';
 import fs from 'fs';
 
 class VideoConfig {
-  maxSize: bigint;
+  maxSize: number;
   minDuration: number;
   maxDuration: number;
 
-  constructor(maxSize: bigint, minDuration: number, maxDuration: number) {
+  constructor(maxSize: number, minDuration: number, maxDuration: number) {
     this.maxSize = maxSize;
     this.minDuration = minDuration;
     this.maxDuration = maxDuration;
@@ -28,13 +28,13 @@ class VideoConfig {
       throw new Error('Invalid maxSize format');
     }
 
-    const maxSizeValue = BigInt(maxSizeMatch[1]);
+    const maxSizeValue = parseInt(maxSizeMatch[1]);
     const maxSizeUnit = maxSizeMatch[2].toLowerCase();
 
-    let maxSizeInBytes: bigint;
+    let maxSizeInBytes: number;
     switch (maxSizeUnit) {
       case 'mb':
-        maxSizeInBytes = maxSizeValue * BigInt(1024 * 1024);
+        maxSizeInBytes = maxSizeValue * 1024 * 1024;
         break;
       default:
         throw new Error('Unsupported size unit');

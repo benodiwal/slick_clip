@@ -7,7 +7,7 @@ class UserRouter extends AbstractRouter {
   }
 
   registerRoutes(): void {
-    const userController = new UserController(this.ctx);
+    const userController = new UserController(this.ctx, this.config);
     this.registerGET('/:id', userController.get());
     this.registerPOST('/', userController.create());
   }

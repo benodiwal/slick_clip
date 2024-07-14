@@ -1,14 +1,16 @@
 import { InternalServerError } from 'errors/internal-server-error';
 import { Request, Response, NextFunction } from 'express';
 import AbstractController from './index.controller';
+import z from 'zod';
+import { storageMiddleware } from 'middlewares/storage.middleware';
 
 class VideoController extends AbstractController {
   get() {
     return [
-      async (req: Request, res: Response, next: NextFunction) => {
+      async (_: Request, res: Response, next: NextFunction) => {
         try {
-          console.log(req);
-          res.sendStatus(200);
+            const videos = await this.ctx.db.client.video.findMany({});
+            res.status(201).json({ data: videos });
         } catch (e: unknown) {
           console.error(e);
           next(new InternalServerError());
@@ -17,8 +19,39 @@ class VideoController extends AbstractController {
     ];
   }
 
+  getVideoById() {
+    const paramsSchema = z.object({ id: z.string() });
+    type IParams = z.infer<typeof paramsSchema>;
+    return [
+        async (req: Request, res: Response, next: NextFunction) => {
+            const { id } = req.params as unknown as IParams;
+            const video = await this.ctx.db.client.video.findUnique({
+                where: {
+                    id
+                }
+            });
+
+            if (!video) {
+                return res.status(404).json({ msg: 'Video not found' });
+            }
+
+            if (video.userId != req.user.id) {
+                return res.status(403).json({ msg: "Access Forbidden" });
+            }
+
+            res.status(201).json({ data: video });
+            try {    
+            } catch (e) {
+                console.error(e);
+                next(new InternalServerError());
+            }
+        }
+    ];
+   }
+
   upload() {
     return [
+      storageMiddleware(this.config),
       async (req: Request, res: Response, next: NextFunction) => {
         try {
           console.log(req);
@@ -32,11 +65,14 @@ class VideoController extends AbstractController {
   }
 
   trim() {
+    const paramsSchema = z.object({ id: z.string() });
+    type IParams = z.infer<typeof paramsSchema>;
     return [
       async (req: Request, res: Response, next: NextFunction) => {
         try {
-          console.log(req);
-          res.sendStatus(200);
+            const { id } = req.params as unknown as IParams;
+            console.log(id);
+            res.sendStatus(200);
         } catch (e) {
           console.error(e);
           next(new InternalServerError());
@@ -60,11 +96,33 @@ class VideoController extends AbstractController {
   }
 
   delete() {
+    const paramsSchema = z.object({ id: z.string() });
+    type IParams = z.infer<typeof paramsSchema>;
     return [
       async (req: Request, res: Response, next: NextFunction) => {
         try {
-          console.log(req);
-          res.sendStatus(204);
+            const { id } = req.params as unknown as IParams;
+            const video = await this.ctx.db.client.video.findUnique({
+                where: {
+                    id
+                }
+            });
+
+            if (!video) {
+                return res.status(404).json({ msg: 'Video not found' });
+            }
+
+            if (video.userId != req.user.id) {
+                return res.status(403).json({ msg: "Access Forbidden" });
+            }
+
+            await this.ctx.db.client.video.delete({
+                where: {
+                    id
+                }
+            });
+
+            res.sendStatus(204);
         } catch (e) {
           console.error(e);
           next(new InternalServerError());

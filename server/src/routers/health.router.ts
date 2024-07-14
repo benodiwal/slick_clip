@@ -7,7 +7,7 @@ class HealthRouter extends AbstractRouter {
   }
 
   registerRoutes(): void {
-    const healthController = new HealthController(this.ctx);
+    const healthController = new HealthController(this.ctx, this.config);
     this.registerGET('/', healthController.get());
   }
 }
