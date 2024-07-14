@@ -1,4 +1,4 @@
-import { Router, Express, Handler, Response, Request } from 'express';
+import { Router, Express, Handler, Response, Request, RequestHandler } from 'express';
 import { IContext } from 'interfaces/database';
 
 export default abstract class AbstractRouter {
@@ -16,6 +16,10 @@ export default abstract class AbstractRouter {
 
   register() {
     console.log(`\nregistering ${this.constructor.name} | path: ${this.#path}`);
+    const middlewares = this.registerMiddlewares();
+    for (const middleware of middlewares) {
+      this.#router.use(middleware(this.ctx));
+    }
     this.registerHealthRoutes();
     this.registerRoutes();
     this.#engine.use(this.#path, this.#router);
@@ -49,5 +53,8 @@ export default abstract class AbstractRouter {
     this.registerGET('/health', [this.health]);
   }
 
+  abstract registerMiddlewares(): HandlerWithProps[];
   abstract registerRoutes(): void;
 }
+
+type HandlerWithProps = (ctx: IContext) => RequestHandler;
