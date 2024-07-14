@@ -10,7 +10,11 @@ class VideoRouter extends AbstractRouter {
 
     registerRoutes(): void {
         const videoController = new VideoController(this.ctx);
-        this.registerPOST('/', videoController.upload());
+        this.registerGET('/', videoController.get());
+        this.registerPOST('/upload', videoController.upload());
+        this.registerPOST('/trim', videoController.upload());
+        this.registerPOST('/merge', videoController.upload());
+        this.registerDELETE('/:id', videoController.delete());
     }
 }
 
