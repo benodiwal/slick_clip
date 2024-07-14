@@ -1,14 +1,17 @@
 import { Router, Express, Handler, Response, Request } from 'express';
+import { IContext } from 'interfaces/database';
 
 export default abstract class AbstractRouter {
   #router: Router;
   #engine: Express;
   #path: string;
+  ctx: IContext;
 
-  constructor(engine: Express, path: string) {
+  constructor(ctx: IContext, engine: Express, path: string) {
     this.#router = Router();
     this.#engine = engine;
     this.#path = path;
+    this.ctx = ctx;
   }
 
   register() {

@@ -26,12 +26,11 @@
   },
   "homepage": "https://github.com/benodiwal/slick_clip#readme",
   "dependencies": {
-    "@sequelize/core": "^7.0.0-alpha.37",
+    "@prisma/client": "5.16.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "morgan": "^1.10.0",
-    "sqlite3": "^5.1.7",
     "zod": "^3.22.4",
     "zod-express-middleware": "^1.4.0"
   },
