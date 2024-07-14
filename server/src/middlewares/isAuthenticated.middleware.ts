@@ -16,8 +16,23 @@ const isAuthenticated = (ctx: IContext) => {
         if (!token) {
             return res.status(401).json({ message: 'Authorization token is required' });
         }
-        
-        next();
+
+        try {
+            const user = await ctx.db.client.user.findUnique({
+                where: {
+                    apiToken: token,
+                }
+            });
+
+            if (!user) {
+                throw new Error();
+            }
+            
+            req.user = user;
+            next();
+        } catch (e: unknown) {
+            console.error(e);
+        }
     }
 }
 

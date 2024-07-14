@@ -8,6 +8,7 @@ import { IDatabase } from 'interfaces/database';
 import Context from 'database/Context';
 import path from 'path';
 import VideoConfig from 'configs/video.config';
+import UserRouter from 'routers/user.router';
 
 class Server {
   #engine: Express;
@@ -21,7 +22,6 @@ class Server {
     const configFilePath = path.join(__dirname, '..', '..', 'config.yaml');
     console.log(configFilePath);
     this.config = VideoConfig.fromFile(configFilePath);
-    console.log(this.config);
   }
 
   #registerMiddlwares() {
@@ -33,9 +33,11 @@ class Server {
     const ctx = new Context(this.db);
 
     const healthRouter = new HealthRouter(ctx, this.#engine, '');
+    const userRouter = new UserRouter(ctx, this.#engine, '/user');
     const videoRouter = new VideoRouter(ctx, this.#engine, '/video');
     
     healthRouter.register();
+    userRouter.register();
     videoRouter.register();
   }
 

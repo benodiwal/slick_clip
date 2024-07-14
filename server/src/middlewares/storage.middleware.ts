@@ -9,12 +9,3 @@ const storage = multer.diskStorage({
         cb(null, `${Date.now()}-${file.originalname}`);
     }
 });
-
-const storageMiddleware = multer({
-    storage,
-    limits: {
-        fileSize: 1,
-        files: 1,
-        fields: 0
-    }
-});
