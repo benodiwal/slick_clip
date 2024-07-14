@@ -3,7 +3,7 @@ import AbstractRouter from './index.router';
 
 class HealthRouter extends AbstractRouter {
   registerRoutes(): void {
-    const healthController = new HealthController();
+    const healthController = new HealthController(this.ctx);
     this.registerGET('/', healthController.get());
   }
 }
