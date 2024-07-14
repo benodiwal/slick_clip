@@ -17,6 +17,20 @@ export const validateRequestQuery = (schema: AnyZodObject) => {
   };
 };
 
+export const validateRequestParams = (schema: AnyZodObject) => {
+  return async (req: Request, _: Response, next: NextFunction) => {
+    try {
+      req.params = schema.parse(req.params);
+      next();
+    } catch (e) {
+      if (e instanceof ZodError) {
+        return next(new RequestValidationError(e));
+      }
+      next(new InternalServerError());
+    }
+  };
+};
+
 export const validateRequestBody = (schema: AnyZodObject) => {
   return async (req: Request, _: Response, next: NextFunction) => {
     try {
