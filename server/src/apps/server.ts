@@ -6,14 +6,22 @@ import HealthRouter from 'routers/health.router';
 import VideoRouter from 'routers/video.router';
 import { IDatabase } from 'interfaces/database';
 import Context from 'database/Context';
+import path from 'path';
+import VideoConfig from 'configs/video.config';
 
 class Server {
   #engine: Express;
   db: IDatabase;
+  config: VideoConfig;
 
   constructor(database: IDatabase) {
     this.db = database;
     this.#engine = express();
+
+    const configFilePath = path.join(__dirname, '..', '..', 'config.yaml');
+    console.log(configFilePath);
+    this.config = VideoConfig.fromFile(configFilePath);
+    console.log(this.config);
   }
 
   #registerMiddlwares() {

@@ -23,6 +23,7 @@
       "controllers/*": ["controllers/*"],
       "models/*": ["models/*"],
       "libs/*": ["libs/*"],
+      "config/*": ["config/*"],
       "errors/*": ["errors/*"],
       "interfaces/*": ["interfaces/*"],
       "types/*": ["types/*"],
