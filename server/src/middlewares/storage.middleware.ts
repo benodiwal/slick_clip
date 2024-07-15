@@ -2,7 +2,7 @@ import VideoConfig from 'configs/video.config';
 import { BadRequestError } from 'errors/bad-request-error';
 import { mkdir } from 'fs/promises';
 import multer from 'multer';
-import { getFileLocation } from 'utils';
+import { getFileLocation } from 'utils/index';
 
 const storage = multer.diskStorage({
   destination: async (req, _, cb) => {

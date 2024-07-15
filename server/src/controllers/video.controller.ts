@@ -7,7 +7,7 @@ import { validateRequestBody, validateRequestParams } from 'validators/validateR
 import { BadRequestError } from 'errors/bad-request-error';
 import { NotFoundError } from 'errors/not-found-error';
 import getEnvVar from 'env/index';
-import { generateUniqueUrl, getFileLocation } from 'utils';
+import { generateUniqueUrl, getFileLocation } from 'utils/index';
 import Clipper from 'libs/clipper.lib';
 import { stat } from 'fs/promises';
 import { Video } from '@prisma/client';
@@ -345,7 +345,7 @@ class VideoController extends AbstractController {
         try {
           const { linkId } = req.body as unknown as IParams;
 
-          const shareLink = await this.ctx.db.client.shareLink.findUnique({
+          const shareLink = await this.ctx.db.client.shareLink.findFirst({
             where: { url: linkId },
             include: { video: true },
           });

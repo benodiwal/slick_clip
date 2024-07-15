@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "CommonJS",
-    "types": ["@types/node", "@sequelize/core"],
+    "types": ["@types/node"],
     "moduleDetection": "force",
     "esModuleInterop": true,
     "strict": true,
@@ -23,12 +23,13 @@
       "controllers/*": ["controllers/*"],
       "models/*": ["models/*"],
       "libs/*": ["libs/*"],
-      "config/*": ["config/*"],
+      "configs/*": ["configs/*"],
       "errors/*": ["errors/*"],
       "interfaces/*": ["interfaces/*"],
       "types/*": ["types/*"],
       "database/*": ["database/*"],
-      "validators/*": ["validators/*"]
+      "validators/*": ["validators/*"],
+      "utils/*": ["utils/*"]
     }
   },
   "ts-node": { "files": true, "require": ["tsconfig-paths/register"] },

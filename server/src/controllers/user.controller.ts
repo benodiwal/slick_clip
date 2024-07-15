@@ -3,7 +3,7 @@ import AbstractController from './index.controller';
 import { InternalServerError } from 'errors/internal-server-error';
 import z from 'zod';
 import { validateRequestBody, validateRequestParams } from 'validators/validateRequest';
-import { generateApiToken } from 'utils';
+import { generateApiToken } from 'utils/index';
 
 class UserController extends AbstractController {
   create() {
