@@ -5,6 +5,8 @@ class Clipper {
   static trim = ({ inputPath, outputPath, start, end }: TrimProps): Promise<void> => {
     return new Promise((resolve, reject) => {
       ffmpeg(inputPath)
+        .inputOptions(['-hwaccel auto'])
+        .outputOptions(['-c copy'])
         .setStartTime(start)
         .setDuration(end - start)
         .output(outputPath)
