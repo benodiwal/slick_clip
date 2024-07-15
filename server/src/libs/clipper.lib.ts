@@ -1,6 +1,4 @@
 import ffmpeg from 'fluent-ffmpeg';
-import fs from 'fs';
-import path from 'path';
 import { MergeProps, TrimProps } from 'types/clipper.type';
 
 class Clipper {
@@ -20,36 +18,22 @@ class Clipper {
     });
   };
 
-  static merge = ({ inputPaths, outputPath, tmpFolder }: MergeProps): Promise<void> => {
+  static merge = ({ inputPaths, outputPath }: MergeProps): Promise<void> => {
     return new Promise((resolve, reject) => {
-      const tmpFilePath = path.join(tmpFolder, 'filelist.txt');
-      const fileContent = inputPaths.map((inputPath) => `file '${inputPath}'`).join('\n');
+      const command = ffmpeg();
 
-      fs.writeFile(tmpFilePath, fileContent, (err) => {
-        if (err) {
-          return reject(err);
-        }
-
-        ffmpeg()
-          .input(tmpFilePath)
-          .inputOptions(['-f', 'concat', '-safe', '0'])
-          .outputOptions(['-c', 'copy'])
-          .output(outputPath)
-          .on('end', () => {
-            fs.unlink(tmpFilePath, (unlinkErr) => {
-              if (unlinkErr) {
-                return reject(unlinkErr);
-              }
-              resolve();
-            });
-          })
-          .on('error', (ffmpegErr) => {
-            fs.unlink(tmpFilePath, () => {
-              reject(ffmpegErr);
-            });
-          })
-          .run();
+      inputPaths.forEach((inputPath) => {
+        command.input(inputPath);
       });
+
+      command
+        .on('end', () => {
+          resolve();
+        })
+        .on('error', (err) => {
+          reject(err);
+        })
+        .mergeToFile(outputPath, '/tmp');
     });
   };
 

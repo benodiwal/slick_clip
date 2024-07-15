@@ -59,8 +59,8 @@ class VideoController extends AbstractController {
 
   upload() {
     return [
-        storageMiddleware(this.config),
-        async (req: Request, res: Response, next: NextFunction) => {
+      storageMiddleware(this.config),
+      async (req: Request, res: Response, next: NextFunction) => {
         try {
           const file = req.file;
 
@@ -70,7 +70,7 @@ class VideoController extends AbstractController {
 
           const duration = await Clipper.validate(file.path);
 
-          await this.ctx.db.client.video.create({
+          const video = await this.ctx.db.client.video.create({
             data: {
               userId: req.user.id,
               title: file.filename,
@@ -80,16 +80,15 @@ class VideoController extends AbstractController {
             },
           });
 
-          res.sendStatus(201);
+          res.status(201).json(video);
         } catch (e: unknown) {
-            console.log(e);
+          console.log(e);
           console.error(e);
           next(new InternalServerError());
         }
       },
     ];
   }
-
 
   trim() {
     const paramsSchema = z.object({ id: z.string() });
@@ -102,7 +101,8 @@ class VideoController extends AbstractController {
     type IPayload = z.infer<typeof payloadSchema>;
 
     return [
-      validateRequestBody(paramsSchema),
+      validateRequestParams(paramsSchema),
+      validateRequestBody(payloadSchema),
       async (req: Request<unknown, undefined, IPayload>, res: Response, next: NextFunction) => {
         try {
           const { start, end } = req.body;
@@ -152,7 +152,7 @@ class VideoController extends AbstractController {
 
           const inputPath = `${getEnvVar('STORAGE_PATH')}/${video.filePath}`;
           const newVideoName = `${Date.now()}-${video.title}`;
-          const outputPath = getFileLocation(req.user.id) + newVideoName;
+          const outputPath = getFileLocation(req.user.id) + '/' + newVideoName;
           await Clipper.trim({ inputPath, outputPath, start: startTrim, end: endTrim });
           const newVideoStats = await stat(outputPath);
           const newVideoSize = newVideoStats.size;
@@ -167,9 +167,7 @@ class VideoController extends AbstractController {
             },
           });
 
-          console.log(newVideo);
-
-          res.sendStatus(200);
+          res.status(200).json(newVideo);
         } catch (e) {
           console.error(e);
           next(new InternalServerError());
@@ -179,63 +177,61 @@ class VideoController extends AbstractController {
   }
 
   merge() {
-    const payloadSchema = z.object({ videosIds: z.array(z.string()) });
+    const payloadSchema = z.object({ videoIds: z.array(z.string()) });
     type IPayload = z.infer<typeof payloadSchema>;
 
     return [
       validateRequestBody(payloadSchema),
       async (req: Request<unknown, unknown, IPayload>, res: Response, next: NextFunction) => {
         try {
-          const { videosIds } = req.body;
+          const { videoIds } = req.body;
           const videos: Video[] = [];
           let totalDutation = 0;
 
-          for (const videoId of videosIds) {
-              const video = await this.ctx.db.client.video.findUnique({
-                  where: {
-                      id: videoId,
-                  }
-              });
-              if (!video) {
-                  return next(new BadRequestError(`Invalid VideoId: ${videoId}`));
-              }
-              if (video.userId !== req.user.id) {
-                  return res.status(403).json({ msg: 'Access Forbidden' });
-              }
-              totalDutation += video.duration;
-              videos.push(video);
+          for (const videoId of videoIds) {
+            const video = await this.ctx.db.client.video.findUnique({
+              where: {
+                id: videoId,
+              },
+            });
+            if (!video) {
+              return next(new BadRequestError(`Invalid VideoId: ${videoId}`));
+            }
+            if (video.userId !== req.user.id) {
+              return res.status(403).json({ msg: 'Access Forbidden' });
+            }
+            totalDutation += video.duration;
+            videos.push(video);
           }
 
           if (totalDutation > this.config.maxDuration) {
-              return next(new BadRequestError('Total Duration too long'));
+            return next(new BadRequestError('Total Duration too long'));
           }
 
           const videoFilePaths: string[] = [];
-          videos.forEach(video => {
-              const videoFilePath = `${getEnvVar('STORAGE_PATH')}/${video.filePath}`;
-              videoFilePaths.push(videoFilePath);
+          videos.forEach((video) => {
+            const videoFilePath = `${getEnvVar('STORAGE_PATH')}/${video.filePath}`;
+            videoFilePaths.push(videoFilePath);
           });
 
-          const mergedVideoFileName = `${Date.now()}-merged`;
-          const mergedVideoLocation = getFileLocation(req.user.id) + mergedVideoFileName;
-          await Clipper.merge({ inputPaths: videoFilePaths, outputPath: mergedVideoLocation, tmpFolder: '/tmp/' });
+          const mergedVideoFileName = `${Date.now()}-merged.mp4`;
+          const mergedVideoLocation = getFileLocation(req.user.id)+ '/' + mergedVideoFileName;
+          await Clipper.merge({ inputPaths: videoFilePaths, outputPath: mergedVideoLocation });
 
           const mergredVideoStats = await stat(mergedVideoLocation);
           const mergedVideoSize = mergredVideoStats.size;
 
           const mergedVideo = await this.ctx.db.client.video.create({
             data: {
-                duration: totalDutation,
-                title: mergedVideoFileName,
-                userId: req.user.id,
-                filePath: `${req.user.id}/${mergedVideoFileName}`,
-                size: mergedVideoSize,
-            }
-        });
+              duration: totalDutation,
+              title: mergedVideoFileName,
+              userId: req.user.id,
+              filePath: `${req.user.id}/${mergedVideoFileName}`,
+              size: mergedVideoSize,
+            },
+          });
 
-        console.log(mergedVideo);
-
-          res.sendStatus(201);
+          res.status(201).json(mergedVideo);
         } catch (e) {
           console.error(e);
           next(new InternalServerError());

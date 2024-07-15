@@ -8,5 +8,4 @@ export type TrimProps = {
 export type MergeProps = {
   inputPaths: string[];
   outputPath: string;
-  tmpFolder: string;
 };
