@@ -2,7 +2,7 @@ import { InternalServerError } from 'errors/internal-server-error';
 import { Request, Response, NextFunction } from 'express';
 import AbstractController from './index.controller';
 import z from 'zod';
-// import { storageMiddleware } from 'middlewares/storage.middleware';
+import { storageMiddleware } from 'middlewares/storage.middleware';
 import { validateRequestBody, validateRequestParams } from 'validators/validateRequest';
 import { BadRequestError } from 'errors/bad-request-error';
 import { NotFoundError } from 'errors/not-found-error';
@@ -10,10 +10,7 @@ import getEnvVar from 'env/index';
 import { generateUniqueUrl, getFileLocation } from 'utils';
 import Clipper from 'libs/clipper.lib';
 import { stat } from 'fs/promises';
-import multer from 'multer';
 import { Video } from '@prisma/client';
-
-const upload = multer({ dest: './uploads/' });
 
 class VideoController extends AbstractController {
   get() {
@@ -62,11 +59,10 @@ class VideoController extends AbstractController {
 
   upload() {
     return [
-      // storageMiddleware(this.config),
-      upload.single('video'),
-      async (req: Request, res: Response, next: NextFunction) => {
+        storageMiddleware(this.config),
+        async (req: Request, res: Response, next: NextFunction) => {
         try {
-          const file = req.file as Express.Multer.File;
+          const file = req.file;
 
           if (!file) {
             return next(new BadRequestError('File not found'));
@@ -86,13 +82,14 @@ class VideoController extends AbstractController {
 
           res.sendStatus(201);
         } catch (e: unknown) {
-          console.log(e);
+            console.log(e);
           console.error(e);
           next(new InternalServerError());
         }
       },
     ];
   }
+
 
   trim() {
     const paramsSchema = z.object({ id: z.string() });
@@ -194,29 +191,29 @@ class VideoController extends AbstractController {
           let totalDutation = 0;
 
           for (const videoId of videosIds) {
-            const video = await this.ctx.db.client.video.findUnique({
-              where: {
-                id: videoId,
-              },
-            });
-            if (!video) {
-              return next(new BadRequestError(`Invalid VideoId: ${videoId}`));
-            }
-            if (video.userId !== req.user.id) {
-              return res.status(403).json({ msg: 'Access Forbidden' });
-            }
-            totalDutation += video.duration;
-            videos.push(video);
+              const video = await this.ctx.db.client.video.findUnique({
+                  where: {
+                      id: videoId,
+                  }
+              });
+              if (!video) {
+                  return next(new BadRequestError(`Invalid VideoId: ${videoId}`));
+              }
+              if (video.userId !== req.user.id) {
+                  return res.status(403).json({ msg: 'Access Forbidden' });
+              }
+              totalDutation += video.duration;
+              videos.push(video);
           }
 
           if (totalDutation > this.config.maxDuration) {
-            return next(new BadRequestError('Total Duration too long'));
+              return next(new BadRequestError('Total Duration too long'));
           }
 
           const videoFilePaths: string[] = [];
-          videos.forEach((video) => {
-            const videoFilePath = `${getEnvVar('STORAGE_PATH')}/${video.filePath}`;
-            videoFilePaths.push(videoFilePath);
+          videos.forEach(video => {
+              const videoFilePath = `${getEnvVar('STORAGE_PATH')}/${video.filePath}`;
+              videoFilePaths.push(videoFilePath);
           });
 
           const mergedVideoFileName = `${Date.now()}-merged`;
@@ -228,15 +225,15 @@ class VideoController extends AbstractController {
 
           const mergedVideo = await this.ctx.db.client.video.create({
             data: {
-              duration: totalDutation,
-              title: mergedVideoFileName,
-              userId: req.user.id,
-              filePath: `${req.user.id}/${mergedVideoFileName}`,
-              size: mergedVideoSize,
-            },
-          });
+                duration: totalDutation,
+                title: mergedVideoFileName,
+                userId: req.user.id,
+                filePath: `${req.user.id}/${mergedVideoFileName}`,
+                size: mergedVideoSize,
+            }
+        });
 
-          console.log(mergedVideo);
+        console.log(mergedVideo);
 
           res.sendStatus(201);
         } catch (e) {
