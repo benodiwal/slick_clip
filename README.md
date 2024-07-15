@@ -15,6 +15,7 @@
 - Express.js
 - TypeScript
 - SQLite (via Prisma ORM)
+- fluent-ffmpeg for video processing
 - Swagger for API Documentation
 
 ## Getting Started
@@ -56,6 +57,8 @@
     ```
 
 5. Configure `config.yaml` file accordingly:
+   
+   `ℹ️ minDuration and maxDuration are in seconds`
 
     ```yaml
     maxSize: 100mb
@@ -110,3 +113,6 @@
 ### API Documentation
 
 The API documentation is available via Swagger UI. Once the server is running, you can access it at:
+
+## LICENSE
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
