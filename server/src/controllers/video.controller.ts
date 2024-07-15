@@ -185,6 +185,13 @@ class VideoController extends AbstractController {
       async (req: Request<unknown, unknown, IPayload>, res: Response, next: NextFunction) => {
         try {
           const { videoIds } = req.body;
+
+          const videosSet = new Set(videoIds);
+
+          if (videosSet.size !== videoIds.length) {
+            return next(new BadRequestError('Duplicate videoIds'));
+          }
+
           const videos: Video[] = [];
           let totalDutation = 0;
 
@@ -215,7 +222,7 @@ class VideoController extends AbstractController {
           });
 
           const mergedVideoFileName = `${Date.now()}-merged.mp4`;
-          const mergedVideoLocation = getFileLocation(req.user.id)+ '/' + mergedVideoFileName;
+          const mergedVideoLocation = getFileLocation(req.user.id) + '/' + mergedVideoFileName;
           await Clipper.merge({ inputPaths: videoFilePaths, outputPath: mergedVideoLocation });
 
           const mergredVideoStats = await stat(mergedVideoLocation);
