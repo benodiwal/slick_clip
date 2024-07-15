@@ -60,7 +60,7 @@ class Clipper {
           reject(err);
           return;
         }
-        
+
         if (!metadata || !metadata.format || typeof metadata.format.duration !== 'number') {
           reject(new Error('Unable to determine video duration'));
           return;
@@ -71,7 +71,6 @@ class Clipper {
       });
     });
   };
-  
 }
 
 export default Clipper;

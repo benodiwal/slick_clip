@@ -9,6 +9,6 @@ export const generateUniqueUrl = () => {
   return crypto.randomBytes(16).toString('hex');
 };
 
-export const getFileLocation = (userId: string) => {
-    return `${getEnvVar('STORAGE_PATH')}/${userId}`;
-}
+export const getFileLocation = (userId: string): string => {
+  return `${getEnvVar('STORAGE_PATH')}/${userId}`;
+};

@@ -12,8 +12,8 @@ class VideoRouter extends AbstractRouter {
     this.registerGET('/', videoController.get());
     this.registerGET('/:id', videoController.getVideoById());
     this.registerPOST('/upload', videoController.upload());
-    this.registerPOST('/:id/trim', videoController.upload());
-    this.registerPOST('/merge', videoController.upload());
+    this.registerPOST('/:id/trim', videoController.trim());
+    this.registerPOST('/merge', videoController.merge());
     this.registerDELETE('/:id', videoController.delete());
     this.registerPOST('/:id/share', videoController.createLink());
     this.registerGET('/share/:linkId', videoController.getLink());

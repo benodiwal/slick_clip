@@ -2,7 +2,7 @@ import { InternalServerError } from 'errors/internal-server-error';
 import { Request, Response, NextFunction } from 'express';
 import AbstractController from './index.controller';
 import z from 'zod';
-import { storageMiddleware } from 'middlewares/storage.middleware';
+// import { storageMiddleware } from 'middlewares/storage.middleware';
 import { validateRequestBody, validateRequestParams } from 'validators/validateRequest';
 import { BadRequestError } from 'errors/bad-request-error';
 import { NotFoundError } from 'errors/not-found-error';
@@ -10,14 +10,18 @@ import getEnvVar from 'env/index';
 import { generateUniqueUrl, getFileLocation } from 'utils';
 import Clipper from 'libs/clipper.lib';
 import { stat } from 'fs/promises';
+import multer from 'multer';
+import { Video } from '@prisma/client';
+
+const upload = multer({ dest: './uploads/' });
 
 class VideoController extends AbstractController {
   get() {
     return [
       async (_: Request, res: Response, next: NextFunction) => {
         try {
-            const videos = await this.ctx.db.client.video.findMany({});
-            res.status(201).json({ data: videos });
+          const videos = await this.ctx.db.client.video.findMany({});
+          res.status(201).json({ data: videos });
         } catch (e: unknown) {
           console.error(e);
           next(new InternalServerError());
@@ -30,57 +34,59 @@ class VideoController extends AbstractController {
     const paramsSchema = z.object({ id: z.string() });
     type IParams = z.infer<typeof paramsSchema>;
     return [
-        async (req: Request, res: Response, next: NextFunction) => {
-            const { id } = req.params as unknown as IParams;
-            const video = await this.ctx.db.client.video.findUnique({
-                where: {
-                    id
-                }
-            });
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { id } = req.params as unknown as IParams;
+          const video = await this.ctx.db.client.video.findUnique({
+            where: {
+              id,
+            },
+          });
 
-            if (!video) {
-                return res.status(404).json({ msg: 'Video not found' });
-            }
+          if (!video) {
+            return res.status(404).json({ msg: 'Video not found' });
+          }
 
-            if (video.userId != req.user.id) {
-                return res.status(403).json({ msg: "Access Forbidden" });
-            }
+          if (video.userId != req.user.id) {
+            return res.status(403).json({ msg: 'Access Forbidden' });
+          }
 
-            res.status(201).json({ data: video });
-            try {    
-            } catch (e) {
-                console.error(e);
-                next(new InternalServerError());
-            }
+          res.status(201).json({ data: video });
+        } catch (e) {
+          console.error(e);
+          next(new InternalServerError());
         }
+      },
     ];
-   }
+  }
 
   upload() {
     return [
-      storageMiddleware(this.config),
+      // storageMiddleware(this.config),
+      upload.single('video'),
       async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const file = req.file as unknown as Express.Multer.File;
-            
-            if (!file) {
-                return next(new BadRequestError('File not found'));
-            }
+          const file = req.file as Express.Multer.File;
 
-            await Clipper.validate(file.path);
+          if (!file) {
+            return next(new BadRequestError('File not found'));
+          }
 
-            await this.ctx.db.client.video.create({
-                data: {
-                    userId: req.user.id,
-                    title: file.filename,
-                    size: file.size,
-                    duration: 12,
-                    filePath: `${req.user.id}/${file.filename}`
-                }
-            });
+          const duration = await Clipper.validate(file.path);
 
-            res.sendStatus(201);
+          await this.ctx.db.client.video.create({
+            data: {
+              userId: req.user.id,
+              title: file.filename,
+              size: file.size,
+              duration,
+              filePath: `${req.user.id}/${file.filename}`,
+            },
+          });
+
+          res.sendStatus(201);
         } catch (e: unknown) {
+          console.log(e);
           console.error(e);
           next(new InternalServerError());
         }
@@ -93,80 +99,80 @@ class VideoController extends AbstractController {
     type IParams = z.infer<typeof paramsSchema>;
 
     const payloadSchema = z.object({
-        start: z.optional(z.number()),
-        end: z.optional(z.number()),
+      start: z.optional(z.number()),
+      end: z.optional(z.number()),
     });
     type IPayload = z.infer<typeof payloadSchema>;
 
     return [
-        validateRequestBody(paramsSchema),
-        async (req: Request<unknown, undefined, IPayload>, res: Response, next: NextFunction) => {
+      validateRequestBody(paramsSchema),
+      async (req: Request<unknown, undefined, IPayload>, res: Response, next: NextFunction) => {
         try {
-            const { start, end } = req.body;
-            const { id } = req.params as unknown as IParams;
+          const { start, end } = req.body;
+          const { id } = req.params as unknown as IParams;
 
-            if (!start && !end) {
-                return next(new BadRequestError('one of start or end is required'));
+          if (!start && !end) {
+            return next(new BadRequestError('one of start or end is required'));
+          }
+
+          const video = await this.ctx.db.client.video.findUnique({
+            where: {
+              id,
+            },
+          });
+
+          if (!video) {
+            return next(new NotFoundError());
+          }
+
+          if (video.userId != req.user.id) {
+            return res.status(403).json({ msg: 'Access Forbidden' });
+          }
+
+          let startTrim = 0;
+          let endTrim = video.duration;
+          if (start) {
+            if (start < 0) {
+              return next(new BadRequestError('Start must not be negative'));
             }
+            startTrim = start;
+          }
 
-            const video = await this.ctx.db.client.video.findUnique({
-                where: {
-                    id, 
-                }
-            });
-
-            if (!video) {
-                return next(new NotFoundError());
+          if (end) {
+            if (end >= video.duration) {
+              return next(new BadRequestError('End must be less than video duration'));
             }
+            endTrim = end;
+          }
 
-            if (video.userId != req.user.id) {
-                return res.status(403).json({ msg: "Access Forbidden" });
-            }
+          if (start && end && start >= end) {
+            return next(new BadRequestError('Start must be less than end'));
+          }
 
-            let startTrim = 0;
-            let endTrim = video.duration;
-            if (start) {
-                if (start < 0) {
-                    return next(new BadRequestError('Start must not be negative'));                
-                }
-                startTrim = start;
-            }
+          if (endTrim - startTrim < this.config.minDuration) {
+            return next(new BadRequestError('Trimmed should duration is shorter than the min duration'));
+          }
 
-            if (end) {
-                if (end >= video.duration) {
-                    return next(new BadRequestError('End must be less than video duration'));
-                }
-                endTrim = end;
-            }
+          const inputPath = `${getEnvVar('STORAGE_PATH')}/${video.filePath}`;
+          const newVideoName = `${Date.now()}-${video.title}`;
+          const outputPath = getFileLocation(req.user.id) + newVideoName;
+          await Clipper.trim({ inputPath, outputPath, start: startTrim, end: endTrim });
+          const newVideoStats = await stat(outputPath);
+          const newVideoSize = newVideoStats.size;
 
-            if (start && end && start >= end) {
-                return next(new BadRequestError('Start must be less than end'));
-            }
+          const newVideo = await this.ctx.db.client.video.create({
+            data: {
+              duration: endTrim - startTrim,
+              title: newVideoName,
+              size: newVideoSize,
+              filePath: `/${req.user.id}/${newVideoName}`,
+              userId: req.user.id,
+            },
+          });
 
-            if (endTrim - startTrim < this.config.minDuration) {
-                return next(new BadRequestError('Trimmed should duration is shorter than the min duration'));
-            }
+          console.log(newVideo);
 
-            const inputPath = `${getEnvVar("STORAGE_PATH")}/${video.filePath}`;
-            const newVideoName = `${Date.now()}-${video.title}`;
-            const outputPath = getFileLocation(req.user.id) + newVideoName;
-            await Clipper.trim({ inputPath, outputPath, start: startTrim, end: endTrim });
-            const newVideoStats = await stat(outputPath);
-            const newVideoSize = newVideoStats.size;
-
-            const newVideo = await this.ctx.db.client.video.create({
-                data: {
-                    duration: endTrim - startTrim,
-                    title: newVideoName,
-                    size: newVideoSize,
-                    filePath: `/${req.user.id}/${newVideoName}`,
-                    userId: req.user.id,
-                }
-            });
-
-            console.log(newVideo);
-
-            res.sendStatus(200);
+          res.sendStatus(200);
         } catch (e) {
           console.error(e);
           next(new InternalServerError());
@@ -176,11 +182,63 @@ class VideoController extends AbstractController {
   }
 
   merge() {
+    const payloadSchema = z.object({ videosIds: z.array(z.string()) });
+    type IPayload = z.infer<typeof payloadSchema>;
+
     return [
-      async (req: Request, res: Response, next: NextFunction) => {
+      validateRequestBody(payloadSchema),
+      async (req: Request<unknown, unknown, IPayload>, res: Response, next: NextFunction) => {
         try {
-          console.log(req);
-          res.sendStatus(200);
+          const { videosIds } = req.body;
+          const videos: Video[] = [];
+          let totalDutation = 0;
+
+          for (const videoId of videosIds) {
+            const video = await this.ctx.db.client.video.findUnique({
+              where: {
+                id: videoId,
+              },
+            });
+            if (!video) {
+              return next(new BadRequestError(`Invalid VideoId: ${videoId}`));
+            }
+            if (video.userId !== req.user.id) {
+              return res.status(403).json({ msg: 'Access Forbidden' });
+            }
+            totalDutation += video.duration;
+            videos.push(video);
+          }
+
+          if (totalDutation > this.config.maxDuration) {
+            return next(new BadRequestError('Total Duration too long'));
+          }
+
+          const videoFilePaths: string[] = [];
+          videos.forEach((video) => {
+            const videoFilePath = `${getEnvVar('STORAGE_PATH')}/${video.filePath}`;
+            videoFilePaths.push(videoFilePath);
+          });
+
+          const mergedVideoFileName = `${Date.now()}-merged`;
+          const mergedVideoLocation = getFileLocation(req.user.id) + mergedVideoFileName;
+          await Clipper.merge({ inputPaths: videoFilePaths, outputPath: mergedVideoLocation, tmpFolder: '/tmp/' });
+
+          const mergredVideoStats = await stat(mergedVideoLocation);
+          const mergedVideoSize = mergredVideoStats.size;
+
+          const mergedVideo = await this.ctx.db.client.video.create({
+            data: {
+              duration: totalDutation,
+              title: mergedVideoFileName,
+              userId: req.user.id,
+              filePath: `${req.user.id}/${mergedVideoFileName}`,
+              size: mergedVideoSize,
+            },
+          });
+
+          console.log(mergedVideo);
+
+          res.sendStatus(201);
         } catch (e) {
           console.error(e);
           next(new InternalServerError());
@@ -195,28 +253,28 @@ class VideoController extends AbstractController {
     return [
       async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const { id } = req.params as unknown as IParams;
-            const video = await this.ctx.db.client.video.findUnique({
-                where: {
-                    id
-                }
-            });
+          const { id } = req.params as unknown as IParams;
+          const video = await this.ctx.db.client.video.findUnique({
+            where: {
+              id,
+            },
+          });
 
-            if (!video) {
-                return res.status(404).json({ msg: 'Video not found' });
-            }
+          if (!video) {
+            return res.status(404).json({ msg: 'Video not found' });
+          }
 
-            if (video.userId != req.user.id) {
-                return res.status(403).json({ msg: "Access Forbidden" });
-            }
+          if (video.userId != req.user.id) {
+            return res.status(403).json({ msg: 'Access Forbidden' });
+          }
 
-            await this.ctx.db.client.video.delete({
-                where: {
-                    id
-                }
-            });
+          await this.ctx.db.client.video.delete({
+            where: {
+              id,
+            },
+          });
 
-            res.sendStatus(204);
+          res.sendStatus(204);
         } catch (e) {
           console.error(e);
           next(new InternalServerError());
@@ -233,82 +291,81 @@ class VideoController extends AbstractController {
     type IPayload = z.infer<typeof payloadSchema>;
 
     return [
-        validateRequestParams(paramsSchema),
-        validateRequestBody(payloadSchema),
-        async (req: Request<unknown, unknown, IPayload>, res: Response, next: NextFunction) => {
-            try {
-                const { id } = req.params as unknown as IParams;
-                const { expiresIn } = req.body;
+      validateRequestParams(paramsSchema),
+      validateRequestBody(payloadSchema),
+      async (req: Request<unknown, unknown, IPayload>, res: Response, next: NextFunction) => {
+        try {
+          const { id } = req.params as unknown as IParams;
+          const { expiresIn } = req.body;
 
-                const video = await this.ctx.db.client.video.findFirst({
-                    where: {
-                        id,
-                        userId: req.user.id,
-                    }
-                });
+          const video = await this.ctx.db.client.video.findFirst({
+            where: {
+              id,
+              userId: req.user.id,
+            },
+          });
 
-                if (!video) {
-                    return res.status(404).json({ error: 'Video not found or access denied' });
-                }
+          if (!video) {
+            return res.status(404).json({ error: 'Video not found or access denied' });
+          }
 
-                const url = generateUniqueUrl();
-                const expiresAt = new Date(Date.now() + expiresIn*1000);
+          const url = generateUniqueUrl();
+          const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
-                const sharedLink = await this.ctx.db.client.shareLink.create({
-                    data: {
-                        url,
-                        expiresAt,
-                        videoId: video.id,
-                    }
-                });
+          const sharedLink = await this.ctx.db.client.shareLink.create({
+            data: {
+              url,
+              expiresAt,
+              videoId: video.id,
+            },
+          });
 
-                res.status(201).json({
-                    id: sharedLink.id,
-                    url: `${req.protocol}://${req.get('host')}/videos/share/${sharedLink.url}`,
-                    expiresAt: sharedLink.expiresAt,
-                });
+          res.status(201).json({
+            id: sharedLink.id,
+            url: `${req.protocol}://${req.get('host')}/videos/share/${sharedLink.url}`,
+            expiresAt: sharedLink.expiresAt,
+          });
 
-                res.sendStatus(200);
-            } catch (e) {
-                console.error(e);
-                next(new InternalServerError());
-            }
+          res.sendStatus(200);
+        } catch (e) {
+          console.error(e);
+          next(new InternalServerError());
         }
+      },
     ];
-   }
+  }
 
-   getLink() {
+  getLink() {
     const paramsSchema = z.object({ linkId: z.string() });
     type IParams = z.infer<typeof paramsSchema>;
 
     return [
-        validateRequestParams(paramsSchema),
-        async (req: Request, res: Response, next: NextFunction) => {
-            try {
-                const { linkId } = req.body as unknown as IParams;
+      validateRequestParams(paramsSchema),
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { linkId } = req.body as unknown as IParams;
 
-                const shareLink = await this.ctx.db.client.shareLink.findUnique({
-                    where: { url: linkId },
-                    include: { video: true },
-                });
-                
-                if (!shareLink) {
-                    return res.status(404).json({ error: 'Share link not found' });
-                }
-                
-                if (new Date() > shareLink.expiresAt) {
-                    return res.status(410).json({ error: 'Share link has expired' });
-                }
+          const shareLink = await this.ctx.db.client.shareLink.findUnique({
+            where: { url: linkId },
+            include: { video: true },
+          });
 
-                res.download(`${getEnvVar('STORAGE_PATH')}/${shareLink.video.filePath}`);
-            } catch (e) {
-                console.error(e);
-                next(new InternalServerError());
-            }
+          if (!shareLink) {
+            return res.status(404).json({ error: 'Share link not found' });
+          }
+
+          if (new Date() > shareLink.expiresAt) {
+            return res.status(410).json({ error: 'Share link has expired' });
+          }
+
+          res.download(`${getEnvVar('STORAGE_PATH')}/${shareLink.video.filePath}`);
+        } catch (e) {
+          console.error(e);
+          next(new InternalServerError());
         }
+      },
     ];
-   }
-
+  }
 }
 
 export default VideoController;

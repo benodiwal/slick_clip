@@ -3,7 +3,6 @@ import { IContext } from 'interfaces/database';
 
 const isAuthenticated = (ctx: IContext) => {
   console.log('middleware: isAuthenticated');
-  console.log(ctx);
   return async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
 
@@ -23,6 +22,10 @@ const isAuthenticated = (ctx: IContext) => {
           apiToken: token,
         },
       });
+
+      if (!user) {
+        throw new Error('Invalid Token');
+      }
 
       req.user = user;
       next();
