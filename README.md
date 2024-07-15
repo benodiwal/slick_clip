@@ -113,6 +113,7 @@
 ### API Documentation
 
 The API documentation is available via Swagger UI. Once the server is running, you can access it at:
+https://app.swaggerhub.com/apis/SachinBeniwal/VideoVerse/1.0.0
 
 ## LICENSE
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
